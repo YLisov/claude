@@ -1,0 +1,68 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: cognee-neo4j
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    environment:
+      NEO4J_AUTH: "neo4j/${GRAPH_DATABASE_PASSWORD}"
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_procedures_allowlist: "apoc.*"
+      NEO4J_server_memory_heap_initial__size: "1G"
+      NEO4J_server_memory_heap_max__size: "1500m"
+      NEO4J_server_memory_pagecache_size: "1G"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"${GRAPH_DATABASE_PASSWORD}\" 'RETURN 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cognee-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: cognee
+      POSTGRES_PASSWORD: "${VECTOR_DB_PASSWORD}"
+      POSTGRES_DB: cognee
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognee -d cognee"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./searxng/settings:/etc/searxng:rw
+    environment:
+      SEARXNG_BASE_URL: "http://localhost:8080/"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+volumes:
+  neo4j_data:
+  pg_data:

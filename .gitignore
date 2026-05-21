@@ -1,0 +1,25 @@
+# Secrets — never commit
+memory-system/.env
+memory-system/.neo4j_pw
+memory-system/.pg_pw
+memory-system/handoff.md
+memory-system/hooks.log
+memory-system/venv/
+memory-system/searxng/
+
+# Claude internal state
+.claude.json
+projects/
+plans/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
