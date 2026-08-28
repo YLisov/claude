@@ -132,20 +132,89 @@ fi
 
 step "5/5 · Ключи доступа"
 echo "  Пишутся только в /home/$AGENT_USER/.claude/memory-system/.env (chmod 600)."
-echo "  В репозиторий не попадают, в логах и в ps не светятся. Ввод скрыт."
+echo "  В репозиторий не попадают и в выводе ps не светятся."
 echo
 GITHUB_PAT=""; OPENAI_API_KEY=""
 if [ $W_GITHUB -eq 1 ]; then
-  echo "  GitHub PAT — нужен для MCP github (поиск по публичным репо тоже требует токен:"
-  echo "  без него GitHub API даёт лишь 60 запросов в час и сервер откажется стартовать)."
-  echo "  Создать: https://github.com/settings/tokens  ·  scopes: repo, read:user, read:org"
-  read -rsp "  GitHub PAT (Enter = пропустить): " GITHUB_PAT </dev/tty; echo
-  [ -z "$GITHUB_PAT" ] && warn "без PAT github MCP не будет зарегистрирован" && W_GITHUB=0
+  cat <<'GHHELP'
+
+  ── GitHub PAT ──────────────────────────────────────────────────────
+  Зачем: агент сможет искать по репозиториям и коду, читать issues и PR.
+  Токен нужен даже для публичных репозиториев — без него GitHub отдаёт
+  лишь 60 запросов в час, и MCP-сервер откажется работать.
+
+  Как получить, это минута:
+
+    1. Открой в браузере ссылку — нужные галочки в ней уже проставлены:
+
+       https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=Claude+Agent+VPS
+
+    2. Пролистай вниз и нажми зелёную кнопку «Generate token»
+    3. Скопируй строку вида ghp_xxxxxxxxxxxx — GitHub покажет её ОДИН раз
+    4. Вставь сюда: правый клик или Ctrl+Shift+V
+
+  Ввод скрыт — символы на экране не появятся, так и задумано.
+  Можно пропустить (просто Enter) и вписать токен позже в .env.
+
+GHHELP
+  for _try in 1 2 3; do
+    read -rsp "  GitHub PAT: " GITHUB_PAT </dev/tty; echo
+    if [ -z "$GITHUB_PAT" ]; then
+      warn "пропущено — github MCP не будет установлен"; W_GITHUB=0; break
+    fi
+    printf "  проверяю токен… "
+    GH_LOGIN=$(curl -sf --max-time 20 -H "Authorization: Bearer $GITHUB_PAT" \
+               https://api.github.com/user 2>/dev/null \
+               | python3 -c "import sys,json;print(json.load(sys.stdin).get('login',''))" 2>/dev/null || echo "")
+    if [ -n "$GH_LOGIN" ]; then
+      echo -e "${GREEN}принят${NC} — аккаунт ${BOLD}$GH_LOGIN${NC}"
+      break
+    fi
+    echo -e "${RED}не принят${NC}"
+    if [ "$_try" -lt 3 ]; then
+      echo "    Скорее всего скопирована не вся строка. Токен начинается с ghp_"
+      echo "    и содержит около 40 символов. Попробуй ещё раз."
+    else
+      warn "три попытки подряд не прошли — ставлю без github MCP"
+      echo "    Добавишь позже: впиши GITHUB_PAT в ~$AGENT_USER/.claude/memory-system/.env"
+      echo "    и выполни: cd ~/claude-installer && bash install.sh"
+      W_GITHUB=0; GITHUB_PAT=""
+    fi
+  done
 fi
 if [ $W_COGNEE -eq 1 ]; then
-  echo "  OpenAI API key — для Cognee (gpt-4o-mini + text-embedding-3-small)."
-  read -rsp "  OpenAI API key: " OPENAI_API_KEY </dev/tty; echo
-  [ -z "$OPENAI_API_KEY" ] && warn "без ключа Cognee не заработает — выключаю" && W_COGNEE=0
+  cat <<'OAHELP'
+
+  ── OpenAI API key ──────────────────────────────────────────────────
+  Зачем: Cognee строит граф памяти через gpt-4o-mini и делает эмбеддинги
+  через text-embedding-3-small. Без ключа L4-память не заработает.
+
+    1. Открой https://platform.openai.com/api-keys
+    2. Нажми «Create new secret key», скопируй строку вида sk-proj-...
+    3. Убедись, что на аккаунте есть баланс: при нуле запросы падают
+       с ошибкой 429, и Cognee молча зависает на таймауте
+
+  Ввод скрыт — символы на экране не появятся.
+
+OAHELP
+  for _try in 1 2; do
+    read -rsp "  OpenAI API key: " OPENAI_API_KEY </dev/tty; echo
+    if [ -z "$OPENAI_API_KEY" ]; then
+      warn "без ключа Cognee не заработает — выключаю L4"; W_COGNEE=0; break
+    fi
+    printf "  проверяю ключ… "
+    if curl -sf --max-time 20 -H "Authorization: Bearer $OPENAI_API_KEY" \
+         https://api.openai.com/v1/models >/dev/null 2>&1; then
+      echo -e "${GREEN}принят${NC}"; break
+    fi
+    echo -e "${RED}не принят${NC}"
+    if [ "$_try" -lt 2 ]; then
+      echo "    Проверь, что скопирована вся строка целиком."
+    else
+      warn "ключ не прошёл проверку — ставлю без Cognee"
+      W_COGNEE=0; OPENAI_API_KEY=""
+    fi
+  done
 fi
 
 EXTRA_SSH_KEY="$(ask 'Доп. SSH-ключ для входа под '"$AGENT_USER"' (Enter = только ключи root)' '')"

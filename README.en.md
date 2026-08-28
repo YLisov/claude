@@ -117,7 +117,13 @@ The installer prompts for them with hidden input. They never reach the repositor
 
 Neo4j and Postgres passwords and the SearXNG secret are generated locally — you never type them.
 
-PAT scopes: `repo`, `read:user`, `read:org` → [github.com/settings/tokens](https://github.com/settings/tokens)
+**Ready-made link for the GitHub PAT** — the scopes are pre-selected, just press "Generate token":
+
+```
+https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=Claude+Agent+VPS
+```
+
+The installer validates the token against the API right away and, if it is rejected, explains what went wrong and lets you retry.
 
 ---
 

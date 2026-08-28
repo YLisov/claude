@@ -117,7 +117,13 @@ cd ~/claude-installer && bash install.sh --with-cognee
 
 Пароли Neo4j, Postgres и секрет SearXNG генерируются на месте — вводить не нужно.
 
-Scopes для PAT: `repo`, `read:user`, `read:org` → [github.com/settings/tokens](https://github.com/settings/tokens)
+**Готовая ссылка для GitHub PAT** — галочки уже проставлены, остаётся нажать «Generate token»:
+
+```
+https://github.com/settings/tokens/new?scopes=repo,read:user,read:org&description=Claude+Agent+VPS
+```
+
+Установщик сразу проверяет введённый токен через API и, если тот не принят, объясняет что не так и даёт ввести заново.
 
 ---
 
