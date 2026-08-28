@@ -31,14 +31,18 @@ async def fetch_url(url: str, remove_images: bool = True) -> str:
     if not result.success:
         return f"Error fetching {url}: {result.error_message}"
 
-    md = result.markdown_v2.fit_markdown or result.markdown_v2.raw_markdown
+    md = result.markdown.fit_markdown or result.markdown.raw_markdown
     return md.strip()
 
 
 @mcp.tool()
 async def fetch_doc(path: str) -> str:
     """Convert a local PDF/DOCX/PPTX/HTML file to clean markdown using docling."""
-    from docling.document_converter import DocumentConverter
+    try:
+        from docling.document_converter import DocumentConverter
+    except ImportError:
+        return ("docling не установлен. Переустанови с флагом: bash install.sh --with-docling "
+                "(тянет torch, ~2 ГБ).")
 
     converter = DocumentConverter()
     result = converter.convert(path)

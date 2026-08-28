@@ -1,25 +1,47 @@
-# Secrets — never commit
+# ── Секреты — НИКОГДА не коммитить ──────────────────────────
+.env
+*.env
+!config/.env.example
 memory-system/.env
+memory-system/.compose.env
 memory-system/.neo4j_pw
 memory-system/.pg_pw
+memory-system/searxng/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.credentials.json
+credentials*.json
+
+# ── Состояние агента (личные данные, не шаблон) ─────────────
 memory-system/handoff.md
 memory-system/hooks.log
 memory-system/venv/
-memory-system/searxng/
-
-# Claude internal state
+memory-system/venv-crawl4ai/
 .claude.json
+.claude.json.bak.*
 projects/
 plans/
+skills/*/
+!skills/self-compiler/
+!skills/onboarding-conductor/
+!skills/present/
 
-# Python
+# ── Python ──────────────────────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .Python
+venv/
+.venv/
 
-# Node
+# ── Node ────────────────────────────────────────────────────
 node_modules/
+npm-debug.log*
 
-# OS
+# ── ОС и редакторы ──────────────────────────────────────────
 .DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

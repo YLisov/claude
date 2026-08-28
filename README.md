@@ -1,124 +1,229 @@
-# Claude Agent VPS
+<h1 align="center">Claude Agent VPS</h1>
 
-Personal AI agent on a dedicated VPS — one-command installer for Claude Code with 4-layer memory, semantic search, MCP tools, and 20+ design skills.
+<p align="center">
+  <b>Персональный AI-агент на собственном сервере — одной командой.</b><br>
+  Claude Code + четырёхуровневая память + инструменты, которые работают сразу после установки.
+</p>
 
-## What you get
+<p align="center">
+  <a href="#быстрый-старт">Быстрый старт</a> ·
+  <a href="#что-получаешь">Что получаешь</a> ·
+  <a href="#наборы-инструментов">Наборы</a> ·
+  <a href="#если-что-то-пошло-не-так">Траблшутинг</a> ·
+  <a href="README.en.md">English</a>
+</p>
+
+---
+
+## Быстрый старт
+
+На чистой Ubuntu, от `root`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YLisov/claude-vps-autoinstall/main/setup-vps.sh | bash
+```
+
+Скрипт задаёт вопросы в начале, дальше работает сам (~10–15 минут). После него:
+
+```bash
+ssh claude@<ip-сервера>
+claude
+```
+
+При первом запуске Claude Code попросит авторизацию — откроешь ссылку в браузере. Дальше скажи агенту `/onboarding-conductor`, и он сам расспросит тебя о задачах и заполнит свой профиль.
+
+> Всё, что спрашивает установщик: hostname, расширять ли диск, имя пользователя, набор инструментов и ключи доступа. Больше ничего вводить не придётся.
+
+---
+
+## Что получаешь
 
 ```
 Claude Code
-├── 4-layer memory system
-│   ├── L1 IDENTITY     — CLAUDE.md + USER.md (always in context)
-│   ├── L2 STRUCTURED   — auto-memory (MEMORY.md + typed facts)
-│   ├── L3 CONTINUITY   — session hooks → handoff.md (Haiku summarizer)
-│   └── L4 SEMANTIC     — Cognee MCP (Neo4j graph + pgvector + OpenAI)
-├── MCP servers
-│   ├── crawl4ai        — URL → clean markdown (−80% tokens)
-│   ├── searxng         — self-hosted web search
-│   ├── github          — repo/code/issues search
-│   ├── sequential-thinking — structured reasoning
-│   ├── playwright      — headless browser + screenshots
-│   └── cognee          — semantic graph memory
-├── Plugins
-│   ├── superpowers     — 14 dev skills (TDD, debug, plan, review)
-│   ├── context7        — live library documentation
-│   ├── ui-ux-pro-max   — 67 UI styles, 161 palettes
-│   └── interface-design — consistent design across sessions
-└── 20+ SKILL.md files
-    ├── Design: frontend-design, taste-skill, redesign-skill, minimalist-skill,
-    │          soft-skill, theme-factory, brand-guidelines, canvas-design,
-    │          web-design-guidelines, ux-heuristics, refactoring-ui,
-    │          microinteractions, web-typography, top-design
-    └── Agent: skill-finder, self-compiler, onboarding-conductor, present,
-               design-sprint, hooked-ux, react-best-practices, skill-creator
+├── Память — 4 уровня
+│   ├── L1  Личность      CLAUDE.md + USER.md — всегда в контексте
+│   ├── L2  Факты         auto-memory: MEMORY.md + файлы, грузятся по надобности
+│   ├── L3  Непрерывность хуки → handoff.md: «на чём остановились» между сессиями
+│   └── L4  Семантика     Cognee: граф Neo4j + вектор pgvector (опционально)
+│
+├── MCP-инструменты
+│   ├── github        поиск по репозиториям, коду, issues и PR
+│   ├── crawl4ai      URL → чистый markdown (−80% токенов против сырого HTML)
+│   ├── searxng       свой поисковик в Docker, без внешних API-ключей
+│   ├── playwright    headless-браузер: JS-страницы, скриншоты
+│   ├── figma         макеты, переменные и компоненты → код
+│   └── cognee        семантический поиск по накопленной памяти
+│
+├── Плагины
+│   ├── superpowers      TDD, отладка, планирование, code review
+│   ├── context7         актуальная документация библиотек
+│   ├── interface-design консистентный дизайн между сессиями
+│   └── ui-ux-pro-max    67 UI-стилей, 161 палитра
+│
+└── ~19 скиллов, включая find-skills — поиск новых навыков по реестру skills.sh
 ```
 
-## Requirements
+---
 
-- Ubuntu 22.04+ VPS (4 GB RAM minimum, 8 GB recommended)
-- [Claude Code CLI](https://claude.ai/download) installed
-- OpenAI API key (for Cognee LLM + embeddings)
-- GitHub PAT with `public_repo`, `read:user`, `read:org` scopes
+## Что делает установщик
 
-## Quick start
+| Шаг | Что происходит |
+|-----|----------------|
+| **Hostname** | Спрашивает новое имя, прописывает в `/etc/hosts` — чтобы `sudo` не ругался |
+| **Диск** | Видит нерасширенное место после увеличения диска в гипервизоре и растит раздел (`growpart` + `resize2fs`/`xfs_growfs`) |
+| **Пользователь** | Создаёт `claude`, даёт sudo без пароля, добавляет в группу docker, переносит SSH-ключи root |
+| **Окружение** | Docker, Node.js 22, uv, ripgrep, jq, fzf, tmux |
+| **Claude Code** | Ставит нативный установщик, прописывает PATH |
+| **Секреты** | Спрашивает ключи, пишет только в `~/.claude/memory-system/.env` (chmod 600) |
+| **Инфраструктура** | Поднимает контейнеры, создаёт venv, регистрирует MCP, ставит плагины и скиллы |
+| **Проверка** | Гоняет смоук-тесты и честно показывает, что взлетело, а что нет |
+
+Скрипт **идемпотентен**: повторный запуск ничего не ломает и не перезаписывает существующий `.env`.
+
+---
+
+## Наборы инструментов
+
+Установщик предложит выбрать:
+
+| Набор | Что входит | Кому |
+|-------|-----------|------|
+| **Полный** | github, crawl4ai, searxng, playwright, figma + все плагины + скиллы | Универсальная рабочая машина |
+| **Базовый** | github, crawl4ai, searxng + superpowers, context7 + скиллы | Без фронтенда и браузера |
+| **Минимальный** | github, crawl4ai + superpowers. Без Docker | Слабый VPS, 1–2 ГБ RAM |
+| **Свой** | Отмечаешь по пунктам | Когда точно знаешь, что нужно |
+
+Отдельные опции:
+
+- **Cognee (L4)** — семантическая память. Нужно ~4,5 ГБ RAM и OpenAI-ключ с балансом. По умолчанию выключена: уровней L1–L3 хватает для большинства задач.
+- **docling** — `fetch_doc` для PDF/DOCX/PPTX. Тянет torch, +~2 ГБ.
+
+Добавить позже можно тем же скриптом:
 
 ```bash
-git clone https://github.com/YLisov/claude.git
-cd claude
-bash install.sh
+cd ~/claude-installer && bash install.sh --with-cognee
 ```
 
-The installer will prompt for your API keys, generate secure passwords, and set everything up automatically (~10 minutes).
+---
 
-## Architecture
+## Какие ключи нужны и зачем
 
-### Memory layers
+Установщик спрашивает их сам, ввод скрыт. В репозиторий они не попадают — путь `.env` закрыт в `.gitignore`.
 
-| Layer | What | When |
-|-------|------|-------|
-| **L1** | CLAUDE.md + USER.md | Always in context |
-| **L2** | auto-memory files | Auto-saved facts, loaded on demand |
-| **L3** | handoff.md | Session continuity via hooks |
-| **L4** | Cognee (graph+vector) | Deep semantic search, on demand only |
+| Ключ | Зачем | Обязателен |
+|------|-------|-----------|
+| **GitHub PAT** | MCP github. Нужен даже для поиска по публичным репозиториям: без токена GitHub API даёт лишь 60 запросов в час | Только если ставишь github MCP |
+| **OpenAI API key** | Cognee: `gpt-4o-mini` + `text-embedding-3-small` | Только с `--with-cognee` |
 
-### MCP tool usage rules (in CLAUDE.md)
+Пароли Neo4j, Postgres и секрет SearXNG генерируются на месте — вводить не нужно.
 
-- **Web page** → `crawl4ai` MCP, not curl
-- **Web search** → `searxng` MCP, not bash
-- **GitHub** → `github` MCP, not curl to api.github.com
-- **JS-heavy pages** → `playwright` if crawl4ai fails
-- **PDF/DOCX** → `crawl4ai` fetch_doc or docling CLI
+Scopes для PAT: `repo`, `read:user`, `read:org` → [github.com/settings/tokens](https://github.com/settings/tokens)
 
-### Infrastructure (Docker)
+---
 
-| Container | Image | Port | Purpose |
-|-----------|-------|------|---------|
-| `cognee-neo4j` | neo4j:5-community | 127.0.0.1:7474/7687 | Graph DB |
-| `cognee-postgres` | pgvector/pgvector:pg16 | 127.0.0.1:5432 | Vector + relational |
-| `searxng` | searxng/searxng | 127.0.0.1:8080 | Web search |
+## Правило приоритета инструментов
 
-All ports are bound to localhost only.
+`CLAUDE.md` заставляет агента брать MCP **первым**, а не после неудачной попытки сделать то же через bash:
 
-## Security
+| Задача | Инструмент |
+|--------|-----------|
+| Страница по URL | `crawl4ai` → `fetch_url` |
+| Поиск в вебе | `searxng` |
+| GitHub | `github` MCP |
+| JS-страницы, скриншоты | `playwright` |
+| PDF/DOCX | `crawl4ai` → `fetch_doc` |
+| Макеты | `figma` |
+| Документация библиотек | `context7` |
 
-- All secrets in `~/.claude/memory-system/.env` (chmod 600)
-- Docker ports bound to `127.0.0.1` only (no external exposure)
-- Hooks have recursion guard (`MEMORY_SUMMARIZER` env var)
-- CLAUDE.md has explicit confirmation requirements for destructive actions
+Прописаны и фолбэки: если `searxng` пуст из-за бана IP — агент идёт через `crawl4ai`, а не долбится повторными запросами.
 
-## After installation
+---
 
-1. Start a new Claude Code session (MCP tools activate on next session)
-2. Run `/onboarding-conductor` to fill in your profile
-3. Try `/skill-finder` to search for more skills
+## Поиск новых навыков
 
-## Structure
+Скилл `find-skills` вместе с CLI `skills` даёт доступ к реестру [skills.sh](https://skills.sh/):
+
+```
+> найди скилл для SEO-оптимизации сайтов
+```
+
+Агент выполнит `skills find seo`, отранжирует найденное по числу установок и предложит поставить:
+
+```bash
+skills add coreyhaines31/marketingskills@seo-audit -g -y
+```
+
+Правило качества зашито в `CLAUDE.md`: ставить только от 1000 установок и от известного автора. Курируемый каталог по категориям — [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills).
+
+---
+
+## Требования
+
+- Ubuntu 22.04+ (проверено на 24.04 LTS)
+- 2 ГБ RAM для базового набора, **8 ГБ** если ставишь Cognee
+- Root-доступ и SSH-ключ в `/root/.ssh/authorized_keys`
+- Аккаунт Claude с доступом к Claude Code
+
+---
+
+## Безопасность
+
+- Секреты живут только в `~/.claude/memory-system/.env` с правами `600`. В аргументы команд не передаются — иначе были бы видны в `ps aux`.
+- Порты Docker привязаны к `127.0.0.1` — снаружи ничего не торчит.
+- `.gitignore` закрывает `.env`, ключи, `handoff.md`, логи и состояние агента.
+- У хука суммаризации есть защита от рекурсии (`MEMORY_SUMMARIZER`).
+- В `CLAUDE.md` прописано подтверждение для необратимых действий: `rm -rf`, `DROP`, `git push --force`, изменения файрвола, отправка писем.
+- `sudo` без пароля для пользователя агента — это осознанный компромисс ради автономности. Машина должна быть выделенной.
+
+---
+
+## Если что-то пошло не так
+
+| Симптом | Причина | Решение |
+|---------|---------|---------|
+| `claude` падает с segfault, «CPU lacks AVX» | Гипервизор прячет флаги CPU | Поставить `CPU=host` в настройках VM |
+| searxng: 0 результатов | Поисковики банят датацентровые IP: капча или 429 | Ждать снятия бана либо работать через `crawl4ai`. Смоук-тест показывает, какие движки отвалились |
+| playwright: «Chromium distribution 'chrome' is not found» | MCP по умолчанию ищет настоящий Google Chrome | Установщик уже прописывает `--browser chromium` |
+| `./venv/bin/pip: not found` | `uv venv` без `--seed` не кладёт pip | Установщик всегда зовёт `uv venv --seed` |
+| Конфликт зависимостей cognee и crawl4ai | Пакеты несовместимы в одном venv | Раздельные `venv` и `venv-crawl4ai` |
+| Cognee виснет на `LLM ... timed out` | Пустой баланс OpenAI (ошибка 429) | Пополнить биллинг |
+| `plugin not found` | Имя без маркетплейса | Ставить как `superpowers@superpowers-dev` |
+| `docker` требует sudo | Группа применяется при следующем входе | Перелогиниться или `sudo reboot` |
+
+---
+
+## Структура репозитория
 
 ```
 .
-├── install.sh                  # Main installer
+├── setup-vps.sh                # Точка входа: от root, одной командой
+├── install.sh                  # Окружение, MCP, плагины, скиллы (от юзера claude)
 ├── config/
-│   ├── CLAUDE.md               # Agent identity + rules (generic template)
-│   ├── USER.md                 # User profile template
-│   ├── settings.json           # Claude Code settings
-│   └── .env.example            # API keys template
+│   ├── CLAUDE.md               # Личность агента, правила, приоритет инструментов
+│   ├── USER.md                 # Шаблон профиля владельца
+│   ├── settings.json           # Настройки Claude Code: хуки, права
+│   └── .env.example            # Шаблон секретов (без значений)
 ├── hooks/
-│   ├── session-start.sh        # Loads handoff.md into context
-│   └── summarize-to-handoff.sh # Summarizes session → handoff.md + Cognee
+│   ├── session-start.sh        # Грузит handoff.md в контекст при старте
+│   └── summarize-to-handoff.sh # Суммаризует сессию через Haiku → handoff.md
 ├── memory-system/
-│   ├── docker-compose.yml      # Neo4j + Postgres + SearXNG
-│   ├── cognee-mcp-server.sh    # Cognee MCP launcher
-│   ├── crawl4ai-mcp.py         # Crawl4AI + docling MCP server
-│   ├── crawl4ai-mcp-server.sh  # Crawl4AI MCP launcher
-│   ├── github-mcp-server.sh    # GitHub MCP launcher (reads PAT from .env)
-│   └── push_to_cognee.py       # Session episode → Cognee (used by hook)
-└── skills/
-    ├── self-compiler/SKILL.md
-    ├── onboarding-conductor/SKILL.md
-    └── present/SKILL.md
+│   ├── docker-compose.yml      # SearXNG + (профиль cognee) Neo4j, pgvector
+│   ├── crawl4ai-mcp.py         # MCP-сервер: fetch_url, fetch_doc
+│   ├── *-mcp-server.sh         # Обёртки запуска MCP
+│   └── push_to_cognee.py       # Сводка сессии → Cognee
+└── skills/                     # Собственные скиллы
 ```
 
-## Cost notes
+---
 
-- **OpenAI**: Haiku summarizer runs once per session (< $0.001). Cognee cognify runs once per session (cost depends on session length).
-- **SearXNG**: Self-hosted, free.
-- **Cognee**: Uses `gpt-4o-mini` + `text-embedding-3-small`. Keep L4 queries intentional.
+## Стоимость
+
+| Что | Сколько |
+|-----|---------|
+| SearXNG, crawl4ai, playwright, github | Бесплатно |
+| Хук суммаризации (Haiku, раз в сессию) | < $0.001 |
+| Cognee (`gpt-4o-mini` + эмбеддинги) | Зависит от объёма; L4 вызывать осознанно |
+
+---
+
+<p align="center"><sub>Apache 2.0 · Лицензии отдельных скиллов смотри в их репозиториях</sub></p>

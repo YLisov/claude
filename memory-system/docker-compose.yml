@@ -2,6 +2,7 @@ services:
   neo4j:
     image: neo4j:5-community
     container_name: cognee-neo4j
+    profiles: ["cognee"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:7474:7474"
@@ -29,6 +30,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: cognee-postgres
+    profiles: ["cognee"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"

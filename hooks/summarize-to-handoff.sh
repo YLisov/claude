@@ -37,7 +37,7 @@ prompt="Ниже хвост транскрипта сессии Claude Code (ф�
 
 $tail_text"
 
-summary=$(MEMORY_SUMMARIZER=1 timeout 120 claude -p --model "$HAIKU" "$prompt" 2>>"$LOG" || true)
+summary=$(MEMORY_SUMMARIZER=1 timeout 120 claude -p --no-session-persistence --model "$HAIKU" "$prompt" 2>>"$LOG" || true)
 
 if [ -n "$summary" ]; then
   {
