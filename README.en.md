@@ -71,7 +71,7 @@ Claude Code
 |------|--------------|
 | **Hostname** | Asks for a new name and writes it to `/etc/hosts`, so `sudo` stops complaining |
 | **Disk** | Detects space left unclaimed after you grew the disk in the hypervisor and expands the partition (`growpart` + `resize2fs`/`xfs_growfs`) |
-| **User** | Creates `claude`, grants passwordless sudo, adds it to the docker group, copies root's SSH keys |
+| **User** | Creates `claude`, grants passwordless sudo, adds it to the docker group, copies root's SSH keys so you log in with the same key. For a different key: `EXTRA_SSH_KEY='ssh-ed25519 AAAA...' bash setup-vps.sh` |
 | **Environment** | Docker, Node.js 22, uv, ripgrep, jq, fzf, tmux |
 | **Claude Code** | Runs the native installer and sets up PATH |
 | **Secrets** | Prompts for keys, writes them only to `~/.claude/memory-system/.env` (chmod 600) |

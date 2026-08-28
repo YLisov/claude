@@ -93,6 +93,13 @@ fi
 step "3/5 · Пользователь агента"
 AGENT_USER="$(ask 'Имя пользователя' 'claude')"
 [[ "$AGENT_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || fail "Недопустимое имя пользователя: $AGENT_USER"
+ROOT_KEYS=$(grep -cvE '^[[:space:]]*(#|$)' /root/.ssh/authorized_keys 2>/dev/null || echo 0)
+if [ "${ROOT_KEYS:-0}" -gt 0 ]; then
+  ok "SSH: скопирую ключи root ($ROOT_KEYS шт.) — зайдёшь под $AGENT_USER тем же ключом"
+else
+  warn "у root нет SSH-ключей — зайти под $AGENT_USER по ключу будет нечем"
+  echo "     Можно передать свой:  EXTRA_SSH_KEY='ssh-ed25519 AAAA...' bash setup-vps.sh"
+fi
 
 step "4/5 · Набор инструментов"
 cat <<'MENU'
@@ -217,7 +224,7 @@ OAHELP
   done
 fi
 
-EXTRA_SSH_KEY="$(ask 'Доп. SSH-ключ для входа под '"$AGENT_USER"' (Enter = только ключи root)' '')"
+EXTRA_SSH_KEY="${EXTRA_SSH_KEY:-}"
 
 # ── Сводка ────────────────────────────────────────────────
 echo
@@ -225,6 +232,11 @@ echo -e "${BOLD}  Что будет сделано:${NC}"
 [ "$NEW_HOST" != "$CUR_HOST" ] && echo "    hostname:    $CUR_HOST → $NEW_HOST" || echo "    hostname:    без изменений"
 [ $DO_RESIZE -eq 1 ] && echo "    диск:        расширить $ROOT_SRC" || echo "    диск:        без изменений"
 echo "    юзер:        $AGENT_USER (sudo без пароля, группа docker)"
+if [ "${ROOT_KEYS:-0}" -gt 0 ]; then
+  echo "    SSH-доступ:  ключи root ($ROOT_KEYS шт.)$([ -n "$EXTRA_SSH_KEY" ] && echo ' + переданный ключ')"
+else
+  echo "    SSH-доступ:  $([ -n "$EXTRA_SSH_KEY" ] && echo 'только переданный ключ' || echo 'КЛЮЧЕЙ НЕТ — вход будет невозможен')"
+fi
 echo -n "    MCP:        "
   [ $W_GITHUB -eq 1 ]     && echo -n " github"
   [ $W_CRAWL4AI -eq 1 ]   && echo -n " crawl4ai"
