@@ -12,6 +12,25 @@
 # ============================================================================
 set -euo pipefail
 
+SELF_URL="${SELF_URL:-https://raw.githubusercontent.com/YLisov/claude-vps-autoinstall/main/setup-vps.sh}"
+
+# При `curl ... | bash` сам скрипт приходит через stdin. Скрипту нужен stdin для
+# вопросов, но забрать его (exec </dev/tty) нельзя: bash не дочитает собственный
+# исходник и начнёт исполнять ввод пользователя как команды. Поэтому скачиваем
+# себя в файл и перезапускаемся оттуда — тогда stdin свободен под диалог.
+if [ ! -t 0 ] && [ -z "${SETUP_VPS_REEXEC:-}" ]; then
+  _tmp="$(mktemp /tmp/setup-vps.XXXXXX.sh)"
+  if command -v curl >/dev/null 2>&1 && curl -fsSL "$SELF_URL" -o "$_tmp" 2>/dev/null && [ -s "$_tmp" ]; then
+    export SETUP_VPS_REEXEC=1
+    exec bash "$_tmp" "$@" </dev/tty
+  fi
+  rm -f "$_tmp"
+  echo "Скрипт запущен через пайп, а ему нужен диалог с тобой." >&2
+  echo "Запусти так:" >&2
+  echo "  curl -fsSL $SELF_URL -o setup-vps.sh && bash setup-vps.sh" >&2
+  exit 1
+fi
+
 REPO_URL="${REPO_URL:-https://github.com/YLisov/claude-vps-autoinstall.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 
@@ -28,10 +47,7 @@ yes_no(){ local p="$1" d="${2:-y}" r; r=$(ask "$p (y/n)" "$d"); [[ "$r" =~ ^[Yy]
 . /etc/os-release
 [[ "$ID" == "ubuntu" || "$ID" == "debian" ]] || warn "Скрипт рассчитан на Ubuntu/Debian, у тебя $ID — продолжаю на свой страх"
 
-# Скрипт может быть запущен через `curl | bash` — тогда stdin занят пайпом.
-[ -t 0 ] || exec </dev/tty
-
-clear
+clear 2>/dev/null || true
 cat <<'BANNER'
 ╔══════════════════════════════════════════════════════════╗
 ║        Claude Agent VPS — развёртывание с нуля           ║
